@@ -1,0 +1,87 @@
+function getResultsOfTLDVDecoding(files) {
+  //MOCK-данные
+  var batch = [];
+
+  for (var i = 0; i < files.length; i++) {
+    // var publicUrl = getPublicUrl(files[i].FileId); //filesModule.gs
+    var fileInfo = {
+      Url: files[i].FileUrl,
+      MOCK: 'MOCK',
+    };
+    batch.push(fileInfo);
+  }
+
+  return batch;
+
+  // Реализация
+  var promises = [];
+  for (var i = 0; i < files.length; i++) {
+    var publicUrl = getPublicUrl(files[i].FileId); //filesModule.gs
+    var fileName = files[i].getName();
+    var promise = importMeeting(publicUrl, fileName);
+    promises.push(promise);
+  }
+
+  return Promise.all(promises).then(results => {
+    return results;
+  }).catch(error => {
+    Logger.log(`Error processing files: ${error.toString()}`);
+    throw error;
+  });
+}
+
+function getResultOfTLDVDecoding(file) {
+  return {
+      Url: file.FileUrl,
+      MOCK: 'MOCK',
+    };
+}
+
+function processFiles(files) {
+  return getResultsOfTLDVDecoding(files);
+
+  //эвейт подгрузки всех файлов
+  getResultsOfTLDVDecoding(files).then(results => {
+    Logger.log('All files processed successfully:', results);
+  }).catch(error => {
+    Logger.log('Error processing files:', error);
+  });
+}
+
+
+// обращение к API TLDV
+function importMeeting(publicUrl, fileName) {
+  return new Promise((resolve, reject) => {
+    let fileUrl = publicUrl;
+    let apiKey = PRIVATE_KEY;
+    let endpoint = 'https://pasta.tldv.io/v1alpha1/meetings/import';
+
+    let payload = {
+      url: fileUrl,
+      name: fileName
+    };
+
+    let options = {
+      method: 'post',
+      'contentType': 'application/json',
+      headers: {
+        'x-api-key': apiKey,
+      },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    };
+
+    try {
+      let response = UrlFetchApp.fetch(endpoint, options);
+      let responseData = JSON.parse(response.getContentText());
+      if (response.getResponseCode() !== 200) {
+        Logger.log(`Failed to send file ${fileName} to TLDV: ${response.toString()} `);
+        reject(new Error(response.toString()));
+      } else {
+        resolve(responseData);
+      }
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
